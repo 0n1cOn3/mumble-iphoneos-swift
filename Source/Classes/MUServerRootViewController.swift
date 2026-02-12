@@ -150,6 +150,7 @@ class MUServerRootViewController: UINavigationController, MKConnectionDelegate, 
     func connectionOpened(_ conn: MKConnection) {
     }
 
+    @objc(connection:rejectedWithReason:explanation:)
     func connection(_ conn: MKConnection!, rejectedWith reason: MKRejectReason, explanation: String!) {
     }
 
@@ -179,6 +180,7 @@ class MUServerRootViewController: UINavigationController, MKConnectionDelegate, 
     // Note: All delegate methods dispatch to main thread since MKServerModel
     // callbacks may be invoked from background threads (network layer).
 
+    @objc(serverModel:userKicked:byUser:forReason:)
     func serverModel(_ model: MKServerModel, userKicked user: MKUser, by actor: MKUser?, forReason reason: String?) {
         guard user == model.connectedUser() else { return }
 
@@ -198,6 +200,7 @@ class MUServerRootViewController: UINavigationController, MKConnectionDelegate, 
         }
     }
 
+    @objc(serverModel:userBanned:byUser:forReason:)
     func serverModel(_ model: MKServerModel, userBanned user: MKUser, by actor: MKUser?, forReason reason: String?) {
         guard user == model.connectedUser() else { return }
 
@@ -217,6 +220,7 @@ class MUServerRootViewController: UINavigationController, MKConnectionDelegate, 
         }
     }
 
+    @objc(serverModel:permissionDenied:forUser:inChannel:)
     func serverModel(_ model: MKServerModel!, permissionDenied perm: MKPermission, for user: MKUser!, in channel: MKChannel!) {
         DispatchQueue.main.async {
             MUNotificationController.shared.addNotification(NSLocalizedString("Permission denied", comment: ""))
@@ -247,6 +251,7 @@ class MUServerRootViewController: UINavigationController, MKConnectionDelegate, 
         }
     }
 
+    @objc(serverModel:missingCertificateErrorForUser:)
     func serverModel(_ model: MKServerModel!, missingCertificateErrorFor user: MKUser!) {
         DispatchQueue.main.async {
             if user == nil {
@@ -286,6 +291,7 @@ class MUServerRootViewController: UINavigationController, MKConnectionDelegate, 
         }
     }
 
+    @objc(serverModel:textMessageReceived:fromUser:)
     func serverModel(_ model: MKServerModel, textMessageReceived msg: MKTextMessage, from user: MKUser?) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }

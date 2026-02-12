@@ -32,6 +32,16 @@ class MUVoiceActivitySetupViewController: UITableViewController {
         tableView.separatorStyle = .singleLine
         tableView.separatorInset = .zero
         tableView.isScrollEnabled = false
+
+        // Start the capture pipeline so the audio bar shows live mic levels.
+        // MUAudioCaptureManager uses AVAudioEngine which coexists with MKAudio's
+        // AudioUnit — both can read from the microphone simultaneously.
+        MUAudioCaptureManager.shared.start()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        MUAudioCaptureManager.shared.stop()
     }
 
     // MARK: - Private Helpers

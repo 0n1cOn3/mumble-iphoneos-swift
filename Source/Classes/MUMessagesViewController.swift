@@ -628,6 +628,7 @@ class MUMessagesViewController: UIViewController, UITableViewDelegate, UITableVi
 
     // MARK: - MKServerModelDelegate
 
+    @objc(serverModel:joinedServerAsUser:withWelcomeMessage:)
     func serverModel(_ model: MKServerModel!, joinedServerAs user: MKUser!, withWelcome msg: MKTextMessage!) {
         // Dispatch to main thread since MKServerModel delegates may be called from background
         DispatchQueue.main.async { [weak self] in
@@ -651,6 +652,7 @@ class MUMessagesViewController: UIViewController, UITableViewDelegate, UITableVi
         }
     }
 
+    @objc(serverModel:userMoved:toChannel:fromChannel:byUser:)
     func serverModel(_ model: MKServerModel!, userMoved user: MKUser!, to chan: MKChannel!, from prevChan: MKChannel!, by mover: MKUser!) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let model = model else { return }
@@ -710,6 +712,7 @@ class MUMessagesViewController: UIViewController, UITableViewDelegate, UITableVi
         }
     }
 
+    @objc(serverModel:textMessageReceived:fromUser:)
     func serverModel(_ model: MKServerModel!, textMessageReceived msg: MKTextMessage!, from user: MKUser!) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let msg = msg else { return }

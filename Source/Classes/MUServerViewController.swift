@@ -314,6 +314,7 @@ class MUServerViewController: UITableViewController, MKServerModelDelegate {
     // Note: All delegate methods dispatch to main thread since MKServerModel
     // callbacks may be invoked from background threads (network layer).
 
+    @objc(serverModel:joinedServerAsUser:)
     func serverModel(_ model: MKServerModel, joinedServerAs user: MKUser) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -423,6 +424,7 @@ class MUServerViewController: UITableViewController, MKServerModelDelegate {
         }
     }
 
+    @objc(serverModel:userMoved:toChannel:fromChannel:byUser:)
     func serverModel(
         _ model: MKServerModel,
         userMoved user: MKUser,
@@ -488,34 +490,42 @@ class MUServerViewController: UITableViewController, MKServerModelDelegate {
         }
     }
 
+    @objc(serverModel:userMutedAndDeafened:byUser:)
     func serverModel(_ model: MKServerModel, userMutedAndDeafened user: MKUser, by actor: MKUser?) {
         DispatchQueue.main.async { [weak self] in self?.reloadUser(user) }
     }
 
+    @objc(serverModel:userUnmutedAndUndeafened:byUser:)
     func serverModel(_ model: MKServerModel, userUnmutedAndUndeafened user: MKUser, by actor: MKUser?) {
         DispatchQueue.main.async { [weak self] in self?.reloadUser(user) }
     }
 
+    @objc(serverModel:userMuted:byUser:)
     func serverModel(_ model: MKServerModel, userMuted user: MKUser, by actor: MKUser?) {
         DispatchQueue.main.async { [weak self] in self?.reloadUser(user) }
     }
 
+    @objc(serverModel:userUnmuted:byUser:)
     func serverModel(_ model: MKServerModel, userUnmuted user: MKUser, by actor: MKUser?) {
         DispatchQueue.main.async { [weak self] in self?.reloadUser(user) }
     }
 
+    @objc(serverModel:userDeafened:byUser:)
     func serverModel(_ model: MKServerModel, userDeafened user: MKUser, by actor: MKUser?) {
         DispatchQueue.main.async { [weak self] in self?.reloadUser(user) }
     }
 
+    @objc(serverModel:userUndeafened:byUser:)
     func serverModel(_ model: MKServerModel, userUndeafened user: MKUser, by actor: MKUser?) {
         DispatchQueue.main.async { [weak self] in self?.reloadUser(user) }
     }
 
+    @objc(serverModel:userSuppressed:byUser:)
     func serverModel(_ model: MKServerModel, userSuppressed user: MKUser, by actor: MKUser?) {
         DispatchQueue.main.async { [weak self] in self?.reloadUser(user) }
     }
 
+    @objc(serverModel:userUnsuppressed:byUser:)
     func serverModel(_ model: MKServerModel, userUnsuppressed user: MKUser, by actor: MKUser?) {
         DispatchQueue.main.async { [weak self] in self?.reloadUser(user) }
     }

@@ -375,6 +375,7 @@ class MUConnectionController: UIView, MKConnectionDelegate, MKServerModelDelegat
         }
     }
 
+    @objc(connection:rejectedWithReason:explanation:)
     func connection(_ conn: MKConnection!, rejectedWith reason: MKRejectReason, explanation: String!) {
         NSLog("MUConnectionController: rejectedWith delegate called - reason=%d, explanation=%@", reason.rawValue, explanation ?? "nil")
         hideConnectingView()
@@ -475,6 +476,7 @@ class MUConnectionController: UIView, MKConnectionDelegate, MKServerModelDelegat
 
     // MARK: - MKServerModelDelegate
 
+    @objc(serverModel:joinedServerAsUser:)
     func serverModel(_ model: MKServerModel, joinedServerAs user: MKUser) {
         NSLog("MUConnectionController: joinedServerAs delegate called - user=%@", user.userName() ?? "nil")
         if let username = user.userName(), let hostname = model.hostname() {

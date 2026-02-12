@@ -244,6 +244,7 @@ class MUMessageRecipientViewController: UITableViewController, MKServerModelDele
 
     // MARK: - MKServerModelDelegate
 
+    @objc(serverModel:joinedServerAsUser:)
     func serverModel(_ model: MKServerModel!, joinedServerAs user: MKUser!) {
         if let rootChannel = model.rootChannel() {
             rebuildModelArray(from: rootChannel)
@@ -308,6 +309,7 @@ class MUMessageRecipientViewController: UITableViewController, MKServerModelDele
         reloadChannel(channel)
     }
 
+    @objc(serverModel:userMoved:toChannel:fromChannel:byUser:)
     func serverModel(_ model: MKServerModel!, userMoved user: MKUser!, to chan: MKChannel!, from prevChan: MKChannel!, by mover: MKUser!) {
         tableView.beginUpdates()
 
@@ -357,34 +359,42 @@ class MUMessageRecipientViewController: UITableViewController, MKServerModelDele
         reloadUser(user)
     }
 
+    @objc(serverModel:userMutedAndDeafened:byUser:)
     func serverModel(_ model: MKServerModel!, userMutedAndDeafened user: MKUser!, by actor: MKUser!) {
         reloadUser(user)
     }
 
+    @objc(serverModel:userUnmutedAndUndeafened:byUser:)
     func serverModel(_ model: MKServerModel!, userUnmutedAndUndeafened user: MKUser!, by actor: MKUser!) {
         reloadUser(user)
     }
 
+    @objc(serverModel:userMuted:byUser:)
     func serverModel(_ model: MKServerModel!, userMuted user: MKUser!, by actor: MKUser!) {
         reloadUser(user)
     }
 
+    @objc(serverModel:userUnmuted:byUser:)
     func serverModel(_ model: MKServerModel!, userUnmuted user: MKUser!, by actor: MKUser!) {
         reloadUser(user)
     }
 
+    @objc(serverModel:userDeafened:byUser:)
     func serverModel(_ model: MKServerModel!, userDeafened user: MKUser!, by actor: MKUser!) {
         reloadUser(user)
     }
 
+    @objc(serverModel:userUndeafened:byUser:)
     func serverModel(_ model: MKServerModel!, userUndeafened user: MKUser!, by actor: MKUser!) {
         reloadUser(user)
     }
 
+    @objc(serverModel:userSuppressed:byUser:)
     func serverModel(_ model: MKServerModel!, userSuppressed user: MKUser!, by actor: MKUser!) {
         reloadUser(user)
     }
 
+    @objc(serverModel:userUnsuppressed:byUser:)
     func serverModel(_ model: MKServerModel!, userUnsuppressed user: MKUser!, by actor: MKUser!) {
         reloadUser(user)
     }

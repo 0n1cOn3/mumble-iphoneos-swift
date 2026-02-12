@@ -86,42 +86,31 @@ class MUAudioCaptureManager: NSObject {
         vadMax = defaults.float(forKey: "AudioVADAbove")
     }
 
-    /// Refreshes encoder/format hints from defaults.
-    /// Audio session configuration is dispatched to a background queue to avoid blocking the main thread.
+    /// Refreshes encoder/format hints from defaults and prepares the metering recorder.
+    ///
+    /// NOTE: This method intentionally does NOT configure AVAudioSession.
+    /// Audio session configuration is the sole responsibility of MUAudioSessionManager
+    /// to avoid race conditions where multiple components set conflicting session
+    /// categories/modes on different queues, causing MKAudio's audio unit to lose
+    /// microphone access.
     @objc func refreshEncoderPreferences() {
         let defaults = UserDefaults.standard
         let quality = defaults.string(forKey: "AudioQualityKind")
 
-        var sampleRate: Double = 48000.0
+        // Use actual sample rates (not bitrates) for the metering recorder
+        let sampleRate: Double
         switch quality {
         case "low":
             sampleRate = 16000.0
-        case "balanced":
-            sampleRate = 40000.0
-        case "high", "opus":
-            sampleRate = 72000.0
         default:
-            break
+            sampleRate = 48000.0
         }
 
-        // Dispatch audio session configuration to background queue to avoid blocking main thread.
-        // AVAudioSession calls are synchronous XPC calls that can take hundreds of milliseconds.
         audioSessionQueue.async { [weak self] in
-            let session = AVAudioSession.sharedInstance()
-            do {
-                try session.setCategory(.playAndRecord, options: [.allowBluetooth, .mixWithOthers])
-                try session.setPreferredSampleRate(sampleRate)
-                try session.setPreferredIOBufferDuration(0.02)
-                try session.setActive(true)
-            } catch {
-                NSLog("MUAudioCaptureManager: failed to configure audio session: %@", error.localizedDescription)
-            }
-
             let settings: [String: Any] = [
-                AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+                AVFormatIDKey: Int(kAudioFormatAppleLossless),
                 AVSampleRateKey: sampleRate,
                 AVNumberOfChannelsKey: 1,
-                AVEncoderBitRateKey: Int(sampleRate),
                 AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
             ]
 

@@ -38,13 +38,36 @@ class MUServerCell: UITableViewCell, MKServerPingerDelegate {
         super.init(coder: coder)
     }
 
+    deinit {
+        stopPinger()
+    }
+
+    // MARK: - Cell Reuse
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        stopPinger()
+        displayname = nil
+        hostname = nil
+        port = nil
+        username = nil
+        imageView?.image = nil
+    }
+
+    // MARK: - Private Pinger Management
+
+    private func stopPinger() {
+        pinger?.setDelegate(nil)
+        pinger = nil
+    }
+
     // MARK: - Public Methods
 
     @objc(populateFromDisplayName:hostName:port:)
     func populate(fromDisplayName displayName: String?, hostName: String?, port: String?) {
         self.displayname = displayName
         self.port = port
-        self.pinger = nil
+        stopPinger()
 
         if let hostName = hostName, !hostName.isEmpty {
             self.hostname = hostName
@@ -71,7 +94,7 @@ class MUServerCell: UITableViewCell, MKServerPingerDelegate {
             self.username = UserDefaults.standard.string(forKey: "DefaultUserName")
         }
 
-        self.pinger = nil
+        stopPinger()
         if let hostname = self.hostname, !hostname.isEmpty {
             self.pinger = MKServerPinger(hostname: hostname, port: port)
             self.pinger?.setDelegate(self)

@@ -153,3 +153,77 @@ Cross-cutting guidance
 - **ARC & memory safety**: Remove manual retain/release patterns during Swift conversion.
 - **Submodules**: Do **not** edit `MumbleKit` or `Dependencies/fmdb`; keep integrations stable via bridging headers until Objective-C is fully removed.
 - **Bridging header cleanup**: Trim after each controller migration to minimize Objective-C surface area.
+
+Working with Claude Code
+========================
+
+See **CLAUDE.md** for comprehensive guidelines on efficient Claude usage for this project.
+
+### Quick Summary
+
+**Files to always include** (20K LOC, cached):
+- `/Source/Classes/` — 58 Swift files (main app)
+- `/MumbleKit/src/MumbleKit/*.h` — 15 public headers
+- `README.markdown` — Known bugs, features, setup
+- `AGENTS.md` — This file (migration status)
+- `Package.swift` — Build configuration
+
+**Files to include selectively** (only when needed):
+- `/MumbleKit/src/*.m` — Objective-C implementation (audio/network/crypto debugging only)
+- `/BuildConfig/*.xcconfig` — Build settings (for build tasks)
+- `/Scripts/*` — Build scripts (for automation)
+- `/Resources/*.plist` — Data structures (for data tasks)
+
+**Never include** (449MB total, kills caching):
+- `/MumbleKit/3rdparty/` — 44MB (OpenSSL, Opus, Protobuf, Speex)
+- `/ios-logs/`, `/DiagnosticLogs/` — 405MB (debug logs)
+- `*.log` files — Debug output
+- `/Resources/*.png` — 102 binary images
+- Build artifacts — `.build/`, `build/`, etc.
+
+### Common Task Patterns
+
+| Task Type | Key Files | Context Needed |
+|-----------|-----------|----------------|
+| **Connection crashes** | MUConnectionController.swift, MKConnection.m, MUDelegate.h | Delegate protocol, state machine, selector names |
+| **Microphone issues** | Audio managers, MKAudioInput.m, MKAudioDevice.h | AVAudioSession config, audio unit properties, device info |
+| **Swift/ObjC interop** | Both language files, bridging header | Selector names, @objc attributes, compiler errors |
+| **UI improvements** | View controllers, storyboards, custom views | Auto Layout, dark mode, accessibility, iPad layout |
+| **Build configuration** | Package.swift, .xcconfig, linker errors | Xcode version, target, full error output |
+
+### Efficiency Tips
+
+✅ **Batch all related information in a single message** — Prevents back-and-forth clarifications
+✅ **Reference this AGENTS.md** — Say "As completed in Phase 6..." instead of re-explaining
+✅ **Provide complete error output** — Full compiler/linker/crash log, not just "it failed"
+✅ **Include git context** — `git log --oneline -5` output shows recent changes
+✅ **Read README.markdown first** — Check known bugs before asking Claude to debug
+
+❌ **Don't split requests** — Multiple messages for related issues
+❌ **Don't include 3rdparty/** — 44MB of compiled dependencies (not project code)
+❌ **Don't include logs/** — 405MB of debug artifacts
+❌ **Don't provide minimal context** — "it crashes" without error message
+
+### Documentation Structure
+
+- **CLAUDE.md** — Comprehensive context optimization and batching patterns
+- **QUICK_START.md** — Five common tasks with exact file lists and example requests
+- **EXAMPLES.md** — Before/after examples of efficient vs inefficient requests
+- **README.markdown** — Project overview, features, known bugs, troubleshooting
+- **.claude/settings.local.json** — Codebase permissions and configuration
+
+**Reference in requests**: "See CLAUDE.md for context optimization" or "Reference QUICK_START.md for the connection crash pattern"
+
+### Recent Migration Patterns
+
+Refer to completed phases in this file for patterns on:
+- **Delegate implementations** — Phase 1 (connection controllers)
+- **Message handling** — Phase 2 (messaging UI and data)
+- **Audio integration** — Phases 3, 6 (audio session, capture manager)
+- **Certificate UI** — Phase 4 (keychain integration, trust UI)
+- **Custom views** — Phase 5 (Core Graphics, animations)
+- **App entry** — Phase 6 (@main attribute, app delegate)
+
+---
+
+**Last Updated**: February 2025
