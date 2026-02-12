@@ -140,6 +140,13 @@ final class MUAudioSessionManager: NSObject {
         restartAudioSubsystemIfNeeded()
     }
 
+    /// Starts (or restarts) MKAudio and MUAudioCaptureManager on a background
+    /// queue.  Call this when the user joins a server so the audio engine is
+    /// running and the metering bar shows live levels.
+    @objc func startAudioEngine() {
+        restartAudioSubsystemIfNeeded()
+    }
+
     /// Handles AVAudioSession route change notifications in a Swift-friendly way
     /// while keeping Objective-C callers compatible.
     /// - Parameters:
