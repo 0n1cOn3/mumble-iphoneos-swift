@@ -143,4 +143,57 @@ final class DataURLTests: XCTestCase {
             XCTAssertEqual(result?.mimeType, mimeType)
         }
     }
+
+    // MARK: - Additional Edge Cases
+
+    func testEmptyMIMEType() {
+        // "data:;base64,<data>" — empty MIME type string
+        let base64 = Data("test".utf8).base64EncodedString()
+        let dataURL = "data:;base64,\(base64)"
+
+        let result = DataURL.parse(dataURL)
+        XCTAssertNotNil(result)
+        XCTAssertEqual(result?.mimeType, "")
+        XCTAssertEqual(String(data: result!.data, encoding: .utf8), "test")
+    }
+
+    func testBase64MarkerIsCaseSensitive() {
+        // The code checks hasPrefix("base64,") — uppercase should fail
+        let base64 = Data("test".utf8).base64EncodedString()
+        let dataURL = "data:text/plain;BASE64,\(base64)"
+
+        let result = DataURL.parse(dataURL)
+        XCTAssertNil(result, "Uppercase BASE64 marker should not be recognized")
+    }
+
+    func testEmptyBase64Payload() {
+        // Empty string base64-encodes to "" — Data(base64Encoded: "") returns empty Data
+        let dataURL = "data:text/plain;base64,"
+
+        let result = DataURL.parse(dataURL)
+        XCTAssertNotNil(result)
+        XCTAssertEqual(result?.data.count, 0)
+    }
+
+    func testParseResultEquatable() {
+        let data = Data("hello".utf8)
+        let a = DataURL.ParseResult(mimeType: "text/plain", data: data)
+        let b = DataURL.ParseResult(mimeType: "text/plain", data: data)
+        let c = DataURL.ParseResult(mimeType: "image/png", data: data)
+
+        XCTAssertEqual(a, b)
+        XCTAssertNotEqual(a, c)
+    }
+
+    func testDataURLWithMultipleSemicolons() {
+        // MIME type containing extra parameters like "text/plain;charset=utf-8"
+        // The parser splits on first semicolon, so charset becomes part of the remainder
+        let base64 = Data("test".utf8).base64EncodedString()
+        let dataURL = "data:text/plain;charset=utf-8;base64,\(base64)"
+
+        let result = DataURL.parse(dataURL)
+        // The first semicolon splits: mimeType = "text/plain", remainder = "charset=utf-8;base64,..."
+        // "charset=utf-8;base64,..." does NOT start with "base64," so this should fail
+        XCTAssertNil(result, "Extra parameters before base64 marker should cause parse failure")
+    }
 }

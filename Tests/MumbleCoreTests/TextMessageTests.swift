@@ -156,4 +156,48 @@ final class TextMessageTests: XCTestCase {
         XCTAssertEqual(message.heading, "Von Benutzer 你好")
         XCTAssertEqual(message.message, "Emoji test: 🎉🎊✨")
     }
+
+    func testNegativeImageCountAffectsAttachments() {
+        // embeddedImageCount is Int, so negative values are possible.
+        // numberOfAttachments = links.count + embeddedImageCount
+        let message = TextMessage(
+            heading: nil,
+            message: nil,
+            embeddedLinks: ["http://a.com"],
+            embeddedImageCount: -1
+        )
+
+        // 1 + (-1) = 0
+        XCTAssertEqual(message.numberOfAttachments, 0)
+        XCTAssertFalse(message.hasAttachments)
+    }
+
+    func testZeroAttachments() {
+        let message = TextMessage(
+            heading: nil,
+            message: nil,
+            embeddedLinks: [],
+            embeddedImageCount: 0
+        )
+
+        XCTAssertEqual(message.numberOfAttachments, 0)
+        XCTAssertFalse(message.hasAttachments)
+    }
+
+    func testDateAffectsEquality() {
+        let date1 = Date(timeIntervalSince1970: 1000)
+        let date2 = Date(timeIntervalSince1970: 2000)
+
+        let message1 = TextMessage(heading: "Test", message: "Hello", date: date1)
+        let message2 = TextMessage(heading: "Test", message: "Hello", date: date2)
+
+        XCTAssertNotEqual(message1, message2)
+    }
+
+    func testIsSentBySelfAffectsEquality() {
+        let message1 = TextMessage(heading: "Test", message: "Hello", isSentBySelf: true)
+        let message2 = TextMessage(heading: "Test", message: "Hello", isSentBySelf: false)
+
+        XCTAssertNotEqual(message1, message2)
+    }
 }

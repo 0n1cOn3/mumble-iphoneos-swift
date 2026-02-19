@@ -124,6 +124,60 @@ final class TextMessageProcessorTests: XCTestCase {
         XCTAssertTrue(output!.hasSuffix("</a></p>"))
     }
 
+    // MARK: - URL-Only Message
+
+    func testURLOnlyMessage() {
+        let input = "http://example.com"
+        let output = TextMessageProcessor.processedHTML(from: input)
+
+        XCTAssertEqual(output, "<p><a href=\"http://example.com\">http://example.com</a></p>")
+    }
+
+    // MARK: - Ampersand Handling
+
+    func testProcessedHTMLDoesNotEscapeAmpersand() {
+        // processedHTML only escapes < and > — ampersand is passed through as-is.
+        // This differs from escapeHTML which escapes all five HTML entities.
+        let input = "Tom & Jerry"
+        let output = TextMessageProcessor.processedHTML(from: input)
+
+        XCTAssertEqual(output, "<p>Tom & Jerry</p>")
+    }
+
+    func testEscapeHTMLEscapesAmpersand() {
+        let input = "Tom & Jerry"
+        let output = TextMessageProcessor.escapeHTML(input)
+
+        XCTAssertEqual(output, "Tom &amp; Jerry")
+    }
+
+    func testEscapeHTMLEscapesDoubleQuotes() {
+        let input = "He said \"hello\""
+        let output = TextMessageProcessor.escapeHTML(input)
+
+        XCTAssertTrue(output.contains("&quot;"))
+    }
+
+    func testEscapeHTMLEscapesSingleQuotes() {
+        let input = "It's fine"
+        let output = TextMessageProcessor.escapeHTML(input)
+
+        XCTAssertTrue(output.contains("&#39;"))
+    }
+
+    // MARK: - Return Type
+
+    func testProcessedHTMLNeverReturnsNil() {
+        // processedHTML returns String? but the regex is always valid,
+        // so it should never actually return nil for any input.
+        let inputs = ["", "hello", "<script>", "http://x.com", "🎉", String(repeating: "a", count: 10000)]
+
+        for input in inputs {
+            XCTAssertNotNil(TextMessageProcessor.processedHTML(from: input),
+                            "processedHTML returned nil for: \(input.prefix(20))")
+        }
+    }
+
     // MARK: - Edge Cases
 
     func testTextWithNewlines() {
@@ -138,5 +192,14 @@ final class TextMessageProcessorTests: XCTestCase {
         let output = TextMessageProcessor.processedHTML(from: input)
 
         XCTAssertEqual(output, "<p>Hëllo Wörld 你好 🎉</p>")
+    }
+
+    func testURLWithQueryStringPreservesFullURL() {
+        let input = "https://example.com/search?q=test&page=1"
+        let output = TextMessageProcessor.processedHTML(from: input)
+
+        // The full URL including query parameters should be inside the href
+        XCTAssertEqual(output,
+            "<p><a href=\"https://example.com/search?q=test&page=1\">https://example.com/search?q=test&page=1</a></p>")
     }
 }

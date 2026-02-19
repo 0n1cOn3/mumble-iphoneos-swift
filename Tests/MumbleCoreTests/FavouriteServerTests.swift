@@ -153,4 +153,41 @@ final class FavouriteServerTests: XCTestCase {
 
         XCTAssertNotEqual(server1, server2)
     }
+
+    func testInequalityByPort() {
+        let server1 = FavouriteServer(displayName: "Test", hostName: "test.com", port: 64738)
+        let server2 = FavouriteServer(displayName: "Test", hostName: "test.com", port: 12345)
+
+        XCTAssertNotEqual(server1, server2)
+    }
+
+    // MARK: - Port Edge Cases
+
+    func testPortZero() {
+        let server = FavouriteServer(port: 0)
+        XCTAssertEqual(server.port, 0)
+    }
+
+    func testPortMaxValue() {
+        let server = FavouriteServer(port: UInt.max)
+        XCTAssertEqual(server.port, UInt.max)
+    }
+
+    func testDefaultPortIsMumbleStandard() {
+        let server = FavouriteServer()
+        XCTAssertEqual(server.port, 64738)
+    }
+
+    // MARK: - Primary Key Edge Cases
+
+    func testNegativePrimaryKeyIsNotPersisted() {
+        var server = FavouriteServer()
+        server.primaryKey = -5
+        XCTAssertFalse(server.hasPrimaryKey)
+    }
+
+    func testPrimaryKeyExactlyMinusOne() {
+        let server = FavouriteServer(primaryKey: -1)
+        XCTAssertFalse(server.hasPrimaryKey)
+    }
 }

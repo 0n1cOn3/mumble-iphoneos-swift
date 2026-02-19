@@ -8,20 +8,26 @@ import MumbleKit
 // Minimal stubs to allow the tests to compile in environments where
 // the real MumbleKit headers are not available (such as CI runners).
 @objc class MKAudio: NSObject {
+    private static let _shared = MKAudio()
+
     @objc static func sharedAudio() -> MKAudio {
-        return MKAudio()
+        return _shared
     }
-    
-    @objc var isRunning: Bool = false
-    
+
+    @objc private(set) var running: Bool = false
+
+    @objc func isRunning() -> Bool {
+        return running
+    }
+
     @objc func start() {
-        isRunning = true
+        running = true
     }
-    
+
     @objc func stop() {
-        isRunning = false
+        running = false
     }
-    
+
     @objc func restart() {
         stop()
         start()
@@ -32,194 +38,365 @@ import MumbleKit
 class MUAudioSessionManagerTests: XCTestCase {
     var sessionManager: MUAudioSessionManager!
     var mockDefaults: UserDefaults!
-    
+
     override func setUp() {
         super.setUp()
         sessionManager = MUAudioSessionManager.shared
-        // Use a separate suite for tests to avoid polluting user defaults
         mockDefaults = UserDefaults(suiteName: "MUAudioSessionManagerTests")!
         mockDefaults.removePersistentDomain(forName: "MUAudioSessionManagerTests")
+
+        // Reset to known defaults so tests don't leak state
+        sessionManager.updateTransmitMethod(withString: nil)
+        sessionManager.updateCodecQualityPreset(nil)
+        sessionManager.updateVADThresholds(lower: 0.3, upper: 0.6)
     }
-    
+
     override func tearDown() {
         mockDefaults.removePersistentDomain(forName: "MUAudioSessionManagerTests")
         super.tearDown()
     }
-    
-    // MARK: - bind(to:defaults:) Tests
-    
-    func testBindToMumbleKitAudioAppliesPlaybackPreferences() {
-        // Given: Speaker mode is enabled in defaults
-        mockDefaults.set(true, forKey: "AudioSpeakerPhoneMode")
-        
-        let audio = MKAudio.sharedAudio()
-        
-        // When: Binding to the audio instance
-        sessionManager.bind(to: audio, defaults: mockDefaults)
-        
-        // Then: The playback preferences should be applied
-        // We can verify this indirectly by checking that the method completes without error
-        XCTAssertTrue(true, "bind method should complete without throwing")
+
+    // MARK: - updateTransmitMethod Tests
+
+    func testTransmitMethodDefaultsToVAD() {
+        let result = sessionManager.updateTransmitMethod(withString: nil)
+
+        XCTAssertEqual(result, "vad")
+        XCTAssertEqual(sessionManager.transmitMode, .voiceActivity)
     }
-    
-    func testBindWithSpeakerModeDisabled() {
-        // Given: Speaker mode is disabled in defaults
-        mockDefaults.set(false, forKey: "AudioSpeakerPhoneMode")
-        
-        let audio = MKAudio.sharedAudio()
-        
-        // When: Binding to the audio instance
-        sessionManager.bind(to: audio, defaults: mockDefaults)
-        
-        // Then: The method should complete successfully
-        XCTAssertTrue(true, "bind method should handle disabled speaker mode")
+
+    func testTransmitMethodSetsPTT() {
+        let result = sessionManager.updateTransmitMethod(withString: "ptt")
+
+        XCTAssertEqual(result, "ptt")
+        XCTAssertEqual(sessionManager.transmitMode, .pushToTalk)
     }
-    
-    // MARK: - refreshPlaybackChain() Tests
-    
-    func testRefreshPlaybackChainCompletesSuccessfully() {
-        // Given: A session manager with bound audio
-        let audio = MKAudio.sharedAudio()
-        sessionManager.bind(to: audio, defaults: mockDefaults)
-        
-        // When: Refreshing the playback chain
-        sessionManager.refreshPlaybackChain()
-        
-        // Then: The method should complete without error
-        XCTAssertTrue(true, "refreshPlaybackChain should complete without throwing")
+
+    func testTransmitMethodSetsContinuous() {
+        let result = sessionManager.updateTransmitMethod(withString: "continuous")
+
+        XCTAssertEqual(result, "continuous")
+        XCTAssertEqual(sessionManager.transmitMode, .continuous)
     }
-    
-    // MARK: - handleRouteChange(reasonValue:defaults:) Tests
-    
-    func testHandleRouteChangeWithNewDeviceAvailable() {
-        // Given: A route change with new device available
-        let audio = MKAudio.sharedAudio()
-        audio.start()
-        sessionManager.bind(to: audio, defaults: mockDefaults)
-        
-        // When: Handling a route change for new device available
-        let reason = AVAudioSession.RouteChangeReason.newDeviceAvailable
-        sessionManager.handleRouteChange(reasonValue: reason.rawValue, defaults: mockDefaults)
-        
-        // Then: The audio subsystem should be restarted
-        // This is verified by the method completing without error
-        XCTAssertTrue(true, "handleRouteChange should handle new device available")
+
+    func testTransmitMethodSetsVADExplicitly() {
+        let result = sessionManager.updateTransmitMethod(withString: "vad")
+
+        XCTAssertEqual(result, "vad")
+        XCTAssertEqual(sessionManager.transmitMode, .voiceActivity)
     }
-    
-    func testHandleRouteChangeWithOldDeviceUnavailable() {
-        // Given: A route change with old device unavailable
-        let audio = MKAudio.sharedAudio()
-        audio.start()
-        sessionManager.bind(to: audio, defaults: mockDefaults)
-        
-        // When: Handling a route change for old device unavailable
-        let reason = AVAudioSession.RouteChangeReason.oldDeviceUnavailable
-        sessionManager.handleRouteChange(reasonValue: reason.rawValue, defaults: mockDefaults)
-        
-        // Then: The audio subsystem should be restarted
-        XCTAssertTrue(true, "handleRouteChange should handle old device unavailable")
+
+    func testTransmitMethodIsCaseInsensitive() {
+        XCTAssertEqual(sessionManager.updateTransmitMethod(withString: "PTT"), "ptt")
+        XCTAssertEqual(sessionManager.transmitMode, .pushToTalk)
+
+        XCTAssertEqual(sessionManager.updateTransmitMethod(withString: "Continuous"), "continuous")
+        XCTAssertEqual(sessionManager.transmitMode, .continuous)
     }
-    
-    func testHandleRouteChangeWithCategoryChange() {
-        // Given: A route change with category change
-        let audio = MKAudio.sharedAudio()
-        audio.start()
-        sessionManager.bind(to: audio, defaults: mockDefaults)
-        
-        // When: Handling a route change for category change
-        let reason = AVAudioSession.RouteChangeReason.categoryChange
-        sessionManager.handleRouteChange(reasonValue: reason.rawValue, defaults: mockDefaults)
-        
-        // Then: The audio subsystem should be restarted
-        XCTAssertTrue(true, "handleRouteChange should handle category change")
+
+    func testTransmitMethodFallsBackToVADForGarbage() {
+        let result = sessionManager.updateTransmitMethod(withString: "banana")
+
+        XCTAssertEqual(result, "vad")
+        XCTAssertEqual(sessionManager.transmitMode, .voiceActivity)
     }
-    
-    func testHandleRouteChangeWithUnknownReason() {
-        // Given: A route change with unknown reason
-        let audio = MKAudio.sharedAudio()
-        sessionManager.bind(to: audio, defaults: mockDefaults)
-        
-        // When: Handling a route change for unknown reason
-        let reason = AVAudioSession.RouteChangeReason.unknown
-        sessionManager.handleRouteChange(reasonValue: reason.rawValue, defaults: mockDefaults)
-        
-        // Then: The method should complete without restarting audio
-        XCTAssertTrue(true, "handleRouteChange should handle unknown reason gracefully")
+
+    func testTransmitMethodPersistsToUserDefaults() {
+        sessionManager.updateTransmitMethod(withString: "ptt")
+
+        let stored = UserDefaults.standard.string(forKey: "AudioTransmitMethod")
+        XCTAssertEqual(stored, "ptt")
     }
-    
-    func testHandleRouteChangeWithOverride() {
-        // Given: A route change with override reason
-        let audio = MKAudio.sharedAudio()
-        audio.start()
-        sessionManager.bind(to: audio, defaults: mockDefaults)
-        
-        // When: Handling a route change for override
-        let reason = AVAudioSession.RouteChangeReason.override
-        sessionManager.handleRouteChange(reasonValue: reason.rawValue, defaults: mockDefaults)
-        
-        // Then: The audio subsystem should be restarted
-        XCTAssertTrue(true, "handleRouteChange should handle override")
+
+    // MARK: - updateVADKind Tests
+
+    func testVADKindDefaultsToAmplitude() {
+        let result = sessionManager.updateVADKind(withString: nil)
+
+        XCTAssertEqual(result, "amplitude")
     }
-    
-    // MARK: - applyPlaybackPreferences(defaults:) Tests
-    
-    func testApplyPlaybackPreferencesWithSpeakerModeEnabled() {
-        // Given: Speaker mode is enabled in defaults
-        mockDefaults.set(true, forKey: "AudioSpeakerPhoneMode")
-        
-        // When: Applying playback preferences
-        sessionManager.applyPlaybackPreferences(defaults: mockDefaults)
-        
-        // Then: The method should complete successfully
-        XCTAssertTrue(true, "applyPlaybackPreferences should apply speaker mode")
+
+    func testVADKindSetsSNR() {
+        let result = sessionManager.updateVADKind(withString: "snr")
+
+        XCTAssertEqual(result, "snr")
     }
-    
-    func testApplyPlaybackPreferencesWithSpeakerModeDisabled() {
-        // Given: Speaker mode is disabled in defaults
-        mockDefaults.set(false, forKey: "AudioSpeakerPhoneMode")
-        
-        // When: Applying playback preferences
-        sessionManager.applyPlaybackPreferences(defaults: mockDefaults)
-        
-        // Then: The method should complete successfully
-        XCTAssertTrue(true, "applyPlaybackPreferences should apply receiver mode")
+
+    func testVADKindSetsAmplitudeExplicitly() {
+        let result = sessionManager.updateVADKind(withString: "amplitude")
+
+        XCTAssertEqual(result, "amplitude")
     }
-    
-    func testApplyPlaybackPreferencesWithDefaultValue() {
-        // Given: No explicit speaker mode setting in defaults (should default to false)
-        // When: Applying playback preferences
-        sessionManager.applyPlaybackPreferences(defaults: mockDefaults)
-        
-        // Then: The method should complete successfully with default value
-        XCTAssertTrue(true, "applyPlaybackPreferences should handle default value")
+
+    func testVADKindIsCaseInsensitive() {
+        XCTAssertEqual(sessionManager.updateVADKind(withString: "SNR"), "snr")
     }
-    
-    // MARK: - configureSession(activate:) Tests
-    
-    func testConfigureSessionWithActivation() {
-        // Given: A session manager
-        // When: Configuring the session with activation
+
+    func testVADKindFallsBackForGarbage() {
+        XCTAssertEqual(sessionManager.updateVADKind(withString: "xyz"), "amplitude")
+    }
+
+    func testVADKindPersistsToUserDefaults() {
+        sessionManager.updateVADKind(withString: "snr")
+
+        let stored = UserDefaults.standard.string(forKey: "AudioVADKind")
+        XCTAssertEqual(stored, "snr")
+    }
+
+    // MARK: - updateVADThresholds Tests
+
+    func testVADThresholdsSetCorrectly() {
+        let result = sessionManager.updateVADThresholds(lower: 0.2, upper: 0.8)
+
+        XCTAssertEqual(result["lower"] as? Float, 0.2)
+        XCTAssertEqual(result["upper"] as? Float, 0.8)
+        XCTAssertEqual(sessionManager.vadLowerThreshold, 0.2)
+        XCTAssertEqual(sessionManager.vadUpperThreshold, 0.8)
+    }
+
+    func testVADThresholdsClampsNegativeValues() {
+        let result = sessionManager.updateVADThresholds(lower: -0.5, upper: 0.5)
+
+        XCTAssertEqual(result["lower"] as? Float, 0.0)
+        XCTAssertEqual(sessionManager.vadLowerThreshold, 0.0)
+    }
+
+    func testVADThresholdsClampsOverOneValues() {
+        let result = sessionManager.updateVADThresholds(lower: 0.5, upper: 1.5)
+
+        XCTAssertEqual(result["upper"] as? Float, 1.0)
+        XCTAssertEqual(sessionManager.vadUpperThreshold, 1.0)
+    }
+
+    func testVADThresholdsEnforcesUpperAtLeastEqualToLower() {
+        // Upper is less than lower — should be forced to match lower
+        let result = sessionManager.updateVADThresholds(lower: 0.7, upper: 0.3)
+
+        XCTAssertEqual(result["lower"] as? Float, 0.7)
+        XCTAssertEqual(result["upper"] as? Float, 0.7)
+        XCTAssertEqual(sessionManager.vadLowerThreshold, 0.7)
+        XCTAssertEqual(sessionManager.vadUpperThreshold, 0.7)
+    }
+
+    func testVADThresholdsHandlesExactBoundaries() {
+        let result = sessionManager.updateVADThresholds(lower: 0.0, upper: 1.0)
+
+        XCTAssertEqual(result["lower"] as? Float, 0.0)
+        XCTAssertEqual(result["upper"] as? Float, 1.0)
+    }
+
+    func testVADThresholdsHandlesEqualValues() {
+        let result = sessionManager.updateVADThresholds(lower: 0.5, upper: 0.5)
+
+        XCTAssertEqual(result["lower"] as? Float, 0.5)
+        XCTAssertEqual(result["upper"] as? Float, 0.5)
+    }
+
+    func testVADThresholdsHandlesNaN() {
+        // NaN should clamp to lowerBound (0.0) via the isFinite guard
+        let result = sessionManager.updateVADThresholds(lower: Float.nan, upper: 0.5)
+
+        XCTAssertEqual(result["lower"] as? Float, 0.0)
+        XCTAssertEqual(sessionManager.vadLowerThreshold, 0.0)
+    }
+
+    func testVADThresholdsHandlesInfinity() {
+        let result = sessionManager.updateVADThresholds(lower: 0.3, upper: Float.infinity)
+
+        // Infinity is not finite, so clamp returns lowerBound (0.0),
+        // but max(infinity, 0.3) = infinity first, then clamp catches it
+        XCTAssertEqual(result["upper"] as? Float, 0.0)
+        XCTAssertEqual(sessionManager.vadUpperThreshold, 0.0)
+    }
+
+    func testVADThresholdsPersistsToUserDefaults() {
+        sessionManager.updateVADThresholds(lower: 0.25, upper: 0.75)
+
+        let storedLower = UserDefaults.standard.float(forKey: "AudioVADBelow")
+        let storedUpper = UserDefaults.standard.float(forKey: "AudioVADAbove")
+        XCTAssertEqual(storedLower, 0.25)
+        XCTAssertEqual(storedUpper, 0.75)
+    }
+
+    // MARK: - updateCodecQualityPreset Tests
+
+    func testCodecQualityDefaultsToBalanced() {
+        let result = sessionManager.updateCodecQualityPreset(nil)
+
+        XCTAssertEqual(result, "balanced")
+        XCTAssertEqual(sessionManager.codecQuality, .balanced)
+    }
+
+    func testCodecQualitySetsLow() {
+        let result = sessionManager.updateCodecQualityPreset("low")
+
+        XCTAssertEqual(result, "low")
+        XCTAssertEqual(sessionManager.codecQuality, .low)
+    }
+
+    func testCodecQualitySetsHigh() {
+        let result = sessionManager.updateCodecQualityPreset("high")
+
+        XCTAssertEqual(result, "high")
+        XCTAssertEqual(sessionManager.codecQuality, .high)
+    }
+
+    func testCodecQualitySetsBalancedExplicitly() {
+        let result = sessionManager.updateCodecQualityPreset("balanced")
+
+        XCTAssertEqual(result, "balanced")
+        XCTAssertEqual(sessionManager.codecQuality, .balanced)
+    }
+
+    func testCodecQualityAcceptsOpusAsHigh() {
+        // "opus" is an alias for high quality
+        let result = sessionManager.updateCodecQualityPreset("opus")
+
+        XCTAssertEqual(result, "high")
+        XCTAssertEqual(sessionManager.codecQuality, .high)
+    }
+
+    func testCodecQualitySetsCustom() {
+        let result = sessionManager.updateCodecQualityPreset("custom")
+
+        XCTAssertEqual(result, "custom")
+        XCTAssertEqual(sessionManager.codecQuality, .custom)
+    }
+
+    func testCodecQualityIsCaseInsensitive() {
+        XCTAssertEqual(sessionManager.updateCodecQualityPreset("LOW"), "low")
+        XCTAssertEqual(sessionManager.codecQuality, .low)
+
+        XCTAssertEqual(sessionManager.updateCodecQualityPreset("HIGH"), "high")
+        XCTAssertEqual(sessionManager.codecQuality, .high)
+    }
+
+    func testCodecQualityFallsBackForGarbage() {
+        let result = sessionManager.updateCodecQualityPreset("garbage")
+
+        XCTAssertEqual(result, "balanced")
+        XCTAssertEqual(sessionManager.codecQuality, .balanced)
+    }
+
+    func testCodecQualityPersistsToUserDefaults() {
+        sessionManager.updateCodecQualityPreset("high")
+
+        let stored = UserDefaults.standard.string(forKey: "AudioQualityKind")
+        XCTAssertEqual(stored, "high")
+    }
+
+    // MARK: - Recorder Settings Tests
+
+    func testRecorderSettingsSetForLowPreset() {
+        sessionManager.updateCodecQualityPreset("low")
+
+        let settings = sessionManager.recorderSettings
+        XCTAssertEqual(settings[AVSampleRateKey] as? Double, 16000)
+        XCTAssertEqual(settings[AVNumberOfChannelsKey] as? Int, 1)
+        XCTAssertEqual(settings[AVLinearPCMBitDepthKey] as? Int, 16)
+        XCTAssertEqual(settings[AVLinearPCMIsFloatKey] as? Bool, false)
+    }
+
+    func testRecorderSettingsSetForBalancedPreset() {
+        sessionManager.updateCodecQualityPreset("balanced")
+
+        let settings = sessionManager.recorderSettings
+        XCTAssertEqual(settings[AVSampleRateKey] as? Double, 48000)
+        XCTAssertEqual(settings[AVNumberOfChannelsKey] as? Int, 1)
+    }
+
+    func testRecorderSettingsSetForHighPreset() {
+        sessionManager.updateCodecQualityPreset("high")
+
+        let settings = sessionManager.recorderSettings
+        XCTAssertEqual(settings[AVSampleRateKey] as? Double, 48000)
+        XCTAssertEqual(settings[AVNumberOfChannelsKey] as? Int, 1)
+    }
+
+    func testRecorderSettingsAlwaysMono() {
+        for preset in ["low", "balanced", "high"] {
+            sessionManager.updateCodecQualityPreset(preset)
+            XCTAssertEqual(sessionManager.recorderSettings[AVNumberOfChannelsKey] as? Int, 1,
+                           "Preset '\(preset)' should be mono")
+        }
+    }
+
+    func testRecorderSettingsAlwaysLinearPCM() {
+        for preset in ["low", "balanced", "high"] {
+            sessionManager.updateCodecQualityPreset(preset)
+            XCTAssertEqual(sessionManager.recorderSettings[AVFormatIDKey] as? UInt32,
+                           kAudioFormatLinearPCM,
+                           "Preset '\(preset)' should use LinearPCM")
+        }
+    }
+
+    // MARK: - State Transition Tests
+
+    func testTransmitModeTransitions() {
+        // Start at VAD (default)
+        XCTAssertEqual(sessionManager.transmitMode, .voiceActivity)
+
+        // Move to PTT
+        sessionManager.updateTransmitMethod(withString: "ptt")
+        XCTAssertEqual(sessionManager.transmitMode, .pushToTalk)
+
+        // Move to continuous
+        sessionManager.updateTransmitMethod(withString: "continuous")
+        XCTAssertEqual(sessionManager.transmitMode, .continuous)
+
+        // Back to VAD
+        sessionManager.updateTransmitMethod(withString: "vad")
+        XCTAssertEqual(sessionManager.transmitMode, .voiceActivity)
+    }
+
+    func testCodecQualityTransitions() {
+        XCTAssertEqual(sessionManager.codecQuality, .balanced)
+
+        sessionManager.updateCodecQualityPreset("low")
+        XCTAssertEqual(sessionManager.codecQuality, .low)
+
+        sessionManager.updateCodecQualityPreset("high")
+        XCTAssertEqual(sessionManager.codecQuality, .high)
+
+        // Recorder settings should reflect the latest preset
+        XCTAssertEqual(sessionManager.recorderSettings[AVSampleRateKey] as? Double, 48000)
+    }
+
+    // MARK: - AVAudioSession Smoke Tests
+    // These methods interact with AVAudioSession on a background queue.
+    // Without mocking, we verify they don't crash.
+
+    func testConfigureSessionDoesNotCrash() {
         sessionManager.configureSession(activate: true)
-        
-        // Then: The session should be configured and activated
-        XCTAssertTrue(true, "configureSession should activate when requested")
-    }
-    
-    func testConfigureSessionWithoutActivation() {
-        // Given: A session manager
-        // When: Configuring the session without activation
         sessionManager.configureSession(activate: false)
-        
-        // Then: The session should be configured but not activated
-        XCTAssertTrue(true, "configureSession should not activate when not requested")
-    }
-    
-    func testConfigureSessionDefaultActivation() {
-        // Given: A session manager
-        // When: Configuring the session with default parameter
         sessionManager.configureSession()
-        
-        // Then: The session should be activated by default
-        XCTAssertTrue(true, "configureSession should activate by default")
+    }
+
+    func testBindDoesNotCrash() {
+        let audio = MKAudio.sharedAudio()
+        sessionManager.bind(to: audio, defaults: mockDefaults)
+    }
+
+    func testRefreshPlaybackChainDoesNotCrash() {
+        let audio = MKAudio.sharedAudio()
+        sessionManager.bind(to: audio, defaults: mockDefaults)
+        sessionManager.refreshPlaybackChain()
+    }
+
+    func testHandleRouteChangeDoesNotCrash() {
+        let audio = MKAudio.sharedAudio()
+        sessionManager.bind(to: audio, defaults: mockDefaults)
+
+        let reasons: [AVAudioSession.RouteChangeReason] = [
+            .newDeviceAvailable,
+            .oldDeviceUnavailable,
+            .categoryChange,
+            .override,
+            .unknown,
+        ]
+
+        for reason in reasons {
+            sessionManager.handleRouteChange(reasonValue: reason.rawValue, defaults: mockDefaults)
+        }
     }
 }
